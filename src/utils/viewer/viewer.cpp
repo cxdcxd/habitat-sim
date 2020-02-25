@@ -40,6 +40,10 @@
 
 #include "esp/gfx/configure.h"
 
+#include "esp/gfx/shadows/ShadowCasterDrawable.h"
+#include "esp/gfx/shadows/ShadowCasterShader.h"
+#include "esp/gfx/shadows/ShadowLight.h"
+
 using namespace Magnum;
 using namespace Math::Literals;
 using namespace Corrade;
@@ -114,6 +118,10 @@ class Viewer : public Magnum::Platform::Application {
   ImGuiIntegration::Context imgui_{NoCreate};
   bool showFPS_ = true;
   bool frustumCullingEnabled_ = true;
+
+  gfx::ShadowCasterShader shadowCasterShader_;
+  MagnumDrawableGroup shadowCasterDrawables_;
+  gfx::ShadowLight* shadowLight_ = nullptr;
 };
 
 Viewer::Viewer(const Arguments& arguments)
@@ -256,6 +264,8 @@ Viewer::Viewer(const Arguments& arguments)
 
   renderCamera_->node().setTransformation(
       rgbSensorNode_->absoluteTransformation());
+
+  shadowLight_ = new gfx::ShadowLight{rootNode_->createChild()};
 
   timeline_.start();
 

@@ -24,6 +24,12 @@ set(gfx_SOURCES
   RenderTarget.cpp
   RenderTarget.h
   ShaderManager.h
+  shadows/ShadowLight.cpp
+  shadows/ShadowLight.h
+  shadows/ShadowCasterDrawable.cpp
+  shadows/ShadowCasterDrawable.h
+  shadows/ShadowCasterShader.cpp
+  shadows/ShadowCasterShader.h
 )
 
 # If ptex support is enabled add relevant source files

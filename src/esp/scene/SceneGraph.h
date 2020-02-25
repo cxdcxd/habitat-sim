@@ -17,7 +17,7 @@
 
 namespace esp {
 namespace scene {
-class SceneGraph {
+class SceneGraph : public MagnumScene {
  public:
   using DrawableGroups = std::unordered_map<std::string, gfx::DrawableGroup>;
 
@@ -101,7 +101,7 @@ class SceneGraph {
   bool deleteDrawableGroup(const std::string& id);
 
  protected:
-  MagnumScene world_;
+  // MagnumScene world_;
 
   // Each item within is a base node, parent of all in that scene, for easy
   // manipulation (e.g., rotate the entire scene)
@@ -115,7 +115,7 @@ class SceneGraph {
   // The transformation matrix between rootNode_ and world_
   // is ALWAYS an IDENTITY matrix.
   // DO NOT add any other transformation in between!!
-  SceneNode rootNode_{world_};
+  SceneNode rootNode_{*this};
 
   // Again, order matters! do not change the sequence!!
   // CANNOT make defaultRenderCameraNode_ specified BEFORE rootNode_.

@@ -1466,6 +1466,13 @@ void ResourceManager::createGenericDrawable(
     int objectId /* = ID_UNDEFINED */) {
   node.addFeature<gfx::GenericDrawable>(mesh, shaderManager_, lightSetup,
                                         material, group, objectId);
+  if (lightSetup != NO_LIGHT_KEY) {
+    scene::SceneGraph* scene = static_cast<scene::SceneGraph*>(node.scene());
+    if (!scene)
+      return;
+    auto drawableGroup = scene->getDrawableGroup("shadow_casters");
+    node.addFeature<gfx::ShadowCasterDrawable>(mesh, node, group);
+  }
 }
 
 bool ResourceManager::loadSUNCGHouseFile(const AssetInfo& houseInfo,
