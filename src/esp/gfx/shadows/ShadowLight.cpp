@@ -206,9 +206,8 @@ void ShadowLight::render(MagnumDrawableGroup& drawables) {
         d.orthographicSize, orthographicNear, orthographicFar));
 
     // const std::vector<Mn::Vector4> clipPlanes = calculateClipPlanes();
-    // camera frustum relative to world origin
-    const Mn::Frustum frustum =
-        Mn::Frustum::fromMatrix(projectionMatrix() * cameraMatrix());
+    // camera frustum relative to camera
+    const Mn::Frustum frustum = Mn::Frustum::fromMatrix(projectionMatrix());
     // Skip out the near plane because we need to include shadow casters
     // traveling the direction the camera is facing.
     const std::vector<Mn::Vector4> clipPlanes{frustum.left(), frustum.right(),
@@ -233,39 +232,38 @@ void ShadowLight::render(MagnumDrawableGroup& drawables) {
       const Mn::Vector4 localCentre{0.0f, 0.0f, 0.0f, 1.0f};
       const Mn::Vector4 drawableCentre = transform * localCentre;
 
-      Corrade::Containers::Optional<Mn::Range3D> aabb = node.getAbsoluteAABB();
+      // get this objects bounding box relative to camera
+      Magnum::Range3D range =
+          geo::getTransformedBB(node.getCumulativeBB(), cameraMatrix());
 
-      if (aabb) {
-        auto& range = *aabb;
-        const Mn::Vector3 center = range.min() + range.max();
-        const Mn::Vector3 extent = range.max() - range.min();
-        for (const auto& plane : clipPlanes) {
-          const Mn::Vector3 absPlaneNormal = Mn::Math::abs(plane.xyz());
+      const Mn::Vector3 center = range.min() + range.max();
+      const Mn::Vector3 extent = range.max() - range.min();
+      for (const auto& plane : clipPlanes) {
+        const Mn::Vector3 absPlaneNormal = Mn::Math::abs(plane.xyz());
 
-          const float d = Mn::Math::dot(center, plane.xyz());
-          const float r = Mn::Math::dot(extent, absPlaneNormal);
-          if (d + r < -2.0 * plane.w()) {
-            // useless side of plane, we can skip
-            drawnByLayer = false;
-            break;
-          }
+        const float d = Mn::Math::dot(center, plane.xyz());
+        const float r = Mn::Math::dot(extent, absPlaneNormal);
+        if (d + r < -2.0 * plane.w()) {
+          // useless side of plane, we can skip
+          drawnByLayer = false;
+          break;
         }
+      }
 
-        if (!drawnByLayer) {
-          continue;
-        }
+      if (!drawnByLayer) {
+        continue;
+      }
 
-        {
-          /* If this object extends in front of the near plane, extend
-             the near plane. We negate the z because the negative z is
-             forward away from the camera, but the near/far planes are
-             measured forwards. */
-          // TODO: need to implement distance to AABB
-          const Mn::Float nearestPoint = 0;
-          orthographicNear = Mn::Math::min(orthographicNear, nearestPoint);
-          filteredDrawables.push_back(&drawable);
-          transformations[transformationsOutIndex++] = transform;
-        }
+      {
+        /* If this object extends in front of the near plane, extend
+           the near plane. We negate the z because the negative z is
+           forward away from the camera, but the near/far planes are
+           measured forwards. */
+        // TODO: need to implement proper distance
+        const Mn::Float nearestPoint = 0;
+        orthographicNear = Mn::Math::min(orthographicNear, nearestPoint);
+        filteredDrawables.push_back(&drawable);
+        transformations[transformationsOutIndex++] = transform;
       }
 
       /* Start at 1, not 0 to skip out the near plane because we need to

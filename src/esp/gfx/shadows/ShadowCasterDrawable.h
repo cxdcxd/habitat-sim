@@ -13,6 +13,7 @@
 
 #include "esp/gfx/Drawable.h"
 #include "esp/gfx/DrawableGroup.h"
+#include "esp/gfx/ShaderManager.h"
 #include "esp/scene/SceneNode.h"
 
 namespace esp {
@@ -24,15 +25,16 @@ class ShadowCasterDrawable : public Drawable {
  public:
   explicit ShadowCasterDrawable(scene::SceneNode& node,
                                 Magnum::GL::Mesh& mesh,
+                                ShaderManager& shaderManager,
                                 DrawableGroup* group = nullptr);
 
-  void setShader(ShadowCasterShader& shader) { shader_ = &shader; }
+  static constexpr char SHADER_KEY[] = "ShadowCasterShader";
 
   void draw(const Magnum::Matrix4& transformationMatrix,
             Magnum::SceneGraph::Camera3D& shadowCamera) override;
 
  private:
-  ShadowCasterShader* shader_{};
+  ShadowCasterShader* shader_ = nullptr;
 };
 
 }  // namespace gfx

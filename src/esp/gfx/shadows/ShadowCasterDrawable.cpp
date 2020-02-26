@@ -37,12 +37,26 @@
 namespace esp {
 namespace gfx {
 
+// static constexpr arrays require redundant definitions until C++17
+constexpr char ShadowCasterDrawable::SHADER_KEY[];
+
 namespace Mn = Magnum;
 
 ShadowCasterDrawable::ShadowCasterDrawable(scene::SceneNode& node,
                                            Magnum::GL::Mesh& mesh,
-                                           DrawableGroup* group = nullptr)
-    : Drawable{node, mesh, group} {}
+                                           ShaderManager& shaderManager,
+                                           DrawableGroup* group)
+    : Drawable{node, mesh, group} {
+  auto shaderResource =
+      shaderManager.get<Magnum::GL::AbstractShaderProgram, ShadowCasterShader>(
+          SHADER_KEY);
+
+  if (!shaderResource) {
+    shaderManager.set<Magnum::GL::AbstractShaderProgram>(
+        shaderResource.key(), new ShadowCasterShader{});
+  }
+  shader_ = &(*shaderResource);
+}
 
 void ShadowCasterDrawable::draw(const Mn::Matrix4& transformationMatrix,
                                 Mn::SceneGraph::Camera3D& shadowCamera) {

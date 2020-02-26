@@ -41,7 +41,6 @@
 #include "esp/gfx/configure.h"
 
 #include "esp/gfx/shadows/ShadowCasterDrawable.h"
-#include "esp/gfx/shadows/ShadowCasterShader.h"
 #include "esp/gfx/shadows/ShadowLight.h"
 
 using namespace Magnum;
@@ -119,9 +118,9 @@ class Viewer : public Magnum::Platform::Application {
   bool showFPS_ = true;
   bool frustumCullingEnabled_ = true;
 
-  gfx::ShadowCasterShader shadowCasterShader_;
-  MagnumDrawableGroup shadowCasterDrawables_;
   gfx::ShadowLight* shadowLight_ = nullptr;
+  Vector2i shadowMapSize_{1024, 1024};
+  Float shadowBias = 0.003f;
 };
 
 Viewer::Viewer(const Arguments& arguments)
@@ -265,7 +264,15 @@ Viewer::Viewer(const Arguments& arguments)
   renderCamera_->node().setTransformation(
       rgbSensorNode_->absoluteTransformation());
 
+  // init shadows
   shadowLight_ = new gfx::ShadowLight{rootNode_->createChild()};
+  sceneGraph_->createDrawableGroup("shadow_casters");
+
+  shadowLight_->setupShadowmaps(4, shadowMapSize_);
+  shadowLight_->setupSplitDistances(0.001f, 1000.0f, 3.0f);
+  shadowLight_->object().setTransformation(
+      agentBodyNode_->MagnumObject::transformationMatrix() *
+      Matrix4::translation({0.1f, 10.0f, -2.0f}));
 
   timeline_.start();
 
@@ -412,14 +419,20 @@ void Viewer::drawEvent() {
   int DEFAULT_SCENE = 0;
   int sceneID = sceneID_[DEFAULT_SCENE];
   auto& sceneGraph = sceneManager_.getSceneGraph(sceneID);
-  uint32_t visibles = 0;
+  shadowLight_->setTarget({3, 2, 3}, rgbSensorNode_->transformation()[2].xyz(),
+                          *renderCamera_);
 
-  for (auto& it : sceneGraph.getDrawableGroups()) {
-    // TODO: remove || true
-    if (it.second.prepareForDraw(*renderCamera_) || true) {
-      visibles += renderCamera_->draw(it.second, frustumCullingEnabled_);
-    }
-  }
+  shadowLight_->render(*sceneGraph.getDrawableGroup("shadow_casters"));
+
+  uint32_t visibles =
+      renderCamera_->draw(sceneGraph.getDrawables(), frustumCullingEnabled_);
+
+  // for (auto& it : sceneGraph.getDrawableGroups()) {
+  //   // TODO: remove || true
+  //   if (it.second.prepareForDraw(*renderCamera_) || true) {
+  //     visibles += renderCamera_->draw(it.second, frustumCullingEnabled_);
+  //   }
+  // }
 
   if (debugBullet_) {
     Magnum::Matrix4 camM(renderCamera_->cameraMatrix());

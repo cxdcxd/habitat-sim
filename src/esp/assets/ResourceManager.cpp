@@ -38,6 +38,7 @@
 #include "esp/gfx/GenericDrawable.h"
 #include "esp/gfx/PrimitiveIDDrawable.h"
 #include "esp/gfx/PrimitiveIDShader.h"
+#include "esp/gfx/shadows/ShadowCasterDrawable.h"
 #include "esp/io/io.h"
 #include "esp/io/json.h"
 #include "esp/scene/SceneConfiguration.h"
@@ -1466,12 +1467,17 @@ void ResourceManager::createGenericDrawable(
     int objectId /* = ID_UNDEFINED */) {
   node.addFeature<gfx::GenericDrawable>(mesh, shaderManager_, lightSetup,
                                         material, group, objectId);
-  if (lightSetup != NO_LIGHT_KEY) {
-    scene::SceneGraph* scene = static_cast<scene::SceneGraph*>(node.scene());
+  if (lightSetup != Mn::ResourceKey{NO_LIGHT_KEY}) {
+    scene::SceneGraph* scene = dynamic_cast<scene::SceneGraph*>(node.scene());
     if (!scene)
       return;
     auto drawableGroup = scene->getDrawableGroup("shadow_casters");
-    node.addFeature<gfx::ShadowCasterDrawable>(mesh, node, group);
+    if (!drawableGroup) {
+      LOG(ERROR) << "no shadow_casters group available!";
+      return;
+    }
+    node.addFeature<gfx::ShadowCasterDrawable>(mesh, shaderManager_,
+                                               drawableGroup);
   }
 }
 
