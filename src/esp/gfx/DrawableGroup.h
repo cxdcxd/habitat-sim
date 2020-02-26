@@ -28,7 +28,7 @@ class Shader {
 /**
  * @brief Group of drawables, and shared group parameters.
  */
-class DrawableGroup : public Magnum::SceneGraph::DrawableGroup3D {
+class DrawableGroup : public MagnumDrawableGroup {
  public:
   /**
    * @brief Constructor
@@ -59,6 +59,12 @@ class DrawableGroup : public Magnum::SceneGraph::DrawableGroup3D {
    * @return Whether the @ref DrawableGroup is in a valid state to be drawn
    */
   bool prepareForDraw(const RenderCamera& camera);
+
+  virtual std::vector<
+      std::pair<std::reference_wrapper<MagnumDrawable>, Magnum::Matrix4>>
+  getDrawableTransforms(RenderCamera& camera) {
+    return camera.drawableTransformations(*this);
+  }
 
  private:
   Shader::ptr shader_ = nullptr;
