@@ -51,7 +51,7 @@ class RenderCamera : public MagnumCamera {
 
   /** @brief Overload */
   uint32_t draw(
-      const std::vector<
+      std::vector<
           std::pair<std::reference_wrapper<Magnum::SceneGraph::Drawable3D>,
                     Magnum::Matrix4>>& drawableTransforms,
       bool frustumCulling = false);

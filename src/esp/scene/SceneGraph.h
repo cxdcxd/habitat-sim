@@ -12,6 +12,7 @@
 #include "SceneNode.h"
 #include "esp/gfx/DrawableGroup.h"
 #include "esp/gfx/RenderCamera.h"
+#include "esp/gfx/shadows/ShadowLight.h"
 
 #include "esp/sensor/VisualSensor.h"
 
@@ -100,6 +101,24 @@ class SceneGraph : public MagnumScene {
    */
   bool deleteDrawableGroup(const std::string& id);
 
+  gfx::DrawableGroup& getShadowCasterDrawables() { return shadowCasterGroup_; }
+
+  const gfx::DrawableGroup& getShadowCasterDrawables() const {
+    return shadowCasterGroup_;
+  }
+
+  gfx::ShadowLight* createShadowLight() {
+    return new gfx::ShadowLight{shadowCameraNode_.createChild()};
+  }
+
+  // we have a special separate DrawableGroup for shadow casters, since they are
+  // not rendered as part of the scene but instead from ShadowLights
+  gfx::DrawableGroup shadowCasterGroup_;
+
+  using LightSetupShadowMaps = std::vector<gfx::ShadowLight*>;
+  using ShadowMapRegistry = Magnum::ResourceManager<LightSetupShadowMaps>;
+  ShadowMapRegistry lightSetupToShadowMaps_;
+
  protected:
   // MagnumScene world_;
 
@@ -120,6 +139,7 @@ class SceneGraph : public MagnumScene {
   // Again, order matters! do not change the sequence!!
   // CANNOT make defaultRenderCameraNode_ specified BEFORE rootNode_.
   SceneNode defaultRenderCameraNode_{rootNode_};
+  SceneNode shadowCameraNode_{rootNode_};
 
   // a default camera to render the scene
   // user can of course define her own RenderCamera for rendering

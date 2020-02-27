@@ -28,6 +28,8 @@ struct LightInfo {
   Magnum::Vector3 position;
   Magnum::Color4 color;
   LightPositionModel model = LightPositionModel::GLOBAL;
+  bool castsShadow = false;
+  bool staticShadows = false;
 };
 
 using LightSetup = std::vector<LightInfo>;

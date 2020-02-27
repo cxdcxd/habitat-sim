@@ -1150,7 +1150,7 @@ bool ResourceManager::loadGeneralMeshData(
     }  // forceReload
 
     // TODO: make this configurable
-    Mn::ResourceKey lightSetup{metaData.isSceneAsset ? NO_LIGHT_KEY
+    Mn::ResourceKey lightSetup{metaData.isSceneAsset ? "scene_key"
                                                      : DEFAULT_LIGHTING_KEY};
     addComponent(metaData, newNode, lightSetup, drawables, metaData.root);
     return true;
@@ -1465,19 +1465,23 @@ void ResourceManager::createGenericDrawable(
     const Mn::ResourceKey& material,
     DrawableGroup* group /* = nullptr */,
     int objectId /* = ID_UNDEFINED */) {
+  if (lightSetup == Mn::ResourceKey{NO_LIGHT_KEY}) {
+    node.addFeature<gfx::GenericDrawable>(mesh, shaderManager_, lightSetup,
+                                          material, group, objectId);
+    return;
+  }
+  scene::SceneGraph* scene = dynamic_cast<scene::SceneGraph*>(node.scene());
+  if (!scene)
+    return;
+
   node.addFeature<gfx::GenericDrawable>(mesh, shaderManager_, lightSetup,
-                                        material, group, objectId);
-  if (lightSetup != Mn::ResourceKey{NO_LIGHT_KEY}) {
-    scene::SceneGraph* scene = dynamic_cast<scene::SceneGraph*>(node.scene());
-    if (!scene)
-      return;
-    auto drawableGroup = scene->getDrawableGroup("shadow_casters");
-    if (!drawableGroup) {
-      LOG(ERROR) << "no shadow_casters group available!";
-      return;
-    }
+                                        material, group, objectId,
+                                        &scene->lightSetupToShadowMaps_);
+
+  if (lightSetup != Mn::ResourceKey{"scene_key"}) {
+    auto shadowCasterDrawables = scene->getShadowCasterDrawables();
     node.addFeature<gfx::ShadowCasterDrawable>(mesh, shaderManager_,
-                                               drawableGroup);
+                                               &shadowCasterDrawables);
   }
 }
 

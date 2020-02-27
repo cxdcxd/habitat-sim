@@ -109,18 +109,18 @@ size_t RenderCamera::cull(
 
 uint32_t RenderCamera::draw(MagnumDrawableGroup& drawables,
                             bool frustumCulling) {
-  auto drawableTransformations = drawableTransformations(drawables);
-  return draw(drawableTransformations, frustumCulling);
+  auto transforms = drawableTransformations(drawables);
+  return draw(transforms, frustumCulling);
 }
 
 uint32_t RenderCamera::draw(
-    const std::vector<
+    std::vector<
         std::pair<std::reference_wrapper<Magnum::SceneGraph::Drawable3D>,
                   Magnum::Matrix4>>& drawableTransforms,
     bool frustumCulling) {
   if (!frustumCulling) {
     MagnumCamera::draw(drawableTransforms);
-    return drawables.size();
+    return drawableTransforms.size();
   }
 
   // draw just the visible part

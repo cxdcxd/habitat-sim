@@ -11,19 +11,32 @@
 namespace esp {
 namespace gfx {
 
-GenericDrawable::GenericDrawable(scene::SceneNode& node,
-                                 Magnum::GL::Mesh& mesh,
-                                 ShaderManager& shaderManager,
-                                 const Magnum::ResourceKey& lightSetup,
-                                 const Magnum::ResourceKey& materialData,
-                                 DrawableGroup* group /* = nullptr */,
-                                 int objectId /* = ID_UNDEFINED */)
+GenericDrawable::GenericDrawable(
+    scene::SceneNode& node,
+    Magnum::GL::Mesh& mesh,
+    ShaderManager& shaderManager,
+    const Magnum::ResourceKey& lightSetup,
+    const Magnum::ResourceKey& materialData,
+    DrawableGroup* group /* = nullptr */,
+    int objectId /* = ID_UNDEFINED */,
+    scene::SceneGraph::ShadowMapRegistry* shadowMapRegistry)
     : Drawable{node, mesh, group},
       shaderManager_{shaderManager},
       lightSetup_{shaderManager.get<LightSetup>(lightSetup)},
       materialData_{
           shaderManager.get<MaterialData, PhongMaterialData>(materialData)},
-      objectId_(objectId) {
+      objectId_(objectId),
+      receivesShadow_{shadowMapRegistry != nullptr},
+      shadowMapRegistry_{shadowMapRegistry} {
+  if (receivesShadow_) {
+    lightSetupShadowMaps_ =
+        shadowMapRegistry_->get<scene::SceneGraph::LightSetupShadowMaps>(
+            lightSetup);
+    if (lightSetupShadowMaps_) {
+      Magnum::Debug{} << "using shadow map of size: "
+                      << lightSetupShadowMaps_->size();
+    }
+  }
   // update the shader early here to to avoid doing it during the render loop
   updateShader();
 }

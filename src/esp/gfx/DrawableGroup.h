@@ -8,6 +8,7 @@
 #include <Magnum/SceneGraph/SceneGraph.h>
 
 #include "esp/core/esp.h"
+#include "esp/gfx/RenderCamera.h"
 
 // #include "esp/gfx/Shader.h"
 

@@ -85,6 +85,8 @@ class Viewer : public Magnum::Platform::Application {
   Magnum::Vector3 positionOnSphere(Magnum::SceneGraph::Camera3D& camera,
                                    const Magnum::Vector2i& position);
 
+  void generateShadowMaps(scene::SceneGraph& scene);
+
   assets::ResourceManager resourceManager_;
   // SceneManager must be before physicsManager_ as the physicsManager_
   // assumes that it "owns" things owned by the scene manager
@@ -179,6 +181,17 @@ Viewer::Viewer(const Arguments& arguments)
   const std::string& file = args.value("scene");
   const assets::AssetInfo info = assets::AssetInfo::fromPath(file);
 
+  // init shadows
+  shadowLight_ = sceneGraph_->createShadowLight();
+  shadowLight_->setupShadowmaps(4, shadowMapSize_);
+  shadowLight_->setupSplitDistances(0.001f, 1000.0f, 3.0f);
+
+  sceneGraph_->lightSetupToShadowMaps_.set(
+      assets::ResourceManager::DEFAULT_LIGHTING_KEY,
+      std::vector<gfx::ShadowLight*>{{shadowLight_}});
+  sceneGraph_->lightSetupToShadowMaps_.set(
+      "scene_key", std::vector<gfx::ShadowLight*>{{shadowLight_}});
+
   if (args.isSet("enable-physics")) {
     std::string physicsConfigFilename = args.value("physics-config");
     if (!Utility::Directory::exists(physicsConfigFilename)) {
@@ -264,13 +277,7 @@ Viewer::Viewer(const Arguments& arguments)
   renderCamera_->node().setTransformation(
       rgbSensorNode_->absoluteTransformation());
 
-  // init shadows
-  shadowLight_ = new gfx::ShadowLight{rootNode_->createChild()};
-  sceneGraph_->createDrawableGroup("shadow_casters");
-
-  shadowLight_->setupShadowmaps(4, shadowMapSize_);
-  shadowLight_->setupSplitDistances(0.001f, 1000.0f, 3.0f);
-  shadowLight_->object().setTransformation(
+  shadowLight_->node().setTransformation(
       agentBodyNode_->MagnumObject::transformationMatrix() *
       Matrix4::translation({0.1f, 10.0f, -2.0f}));
 
@@ -361,6 +368,13 @@ void Viewer::recomputeNavMesh(const std::string& sceneFilename,
   pathfinder_ = pf;
 }
 
+void Viewer::generateShadowMaps(scene::SceneGraph& scene) {
+  shadowLight_->setTarget({3, 2, 3}, rgbSensorNode_->transformation()[2].xyz(),
+                          *renderCamera_);
+
+  shadowLight_->render(scene.getShadowCasterDrawables());
+}
+
 void Viewer::torqueLastObject() {
   if (physicsManager_ == nullptr || objectIDs_.size() == 0)
     return;
@@ -419,20 +433,16 @@ void Viewer::drawEvent() {
   int DEFAULT_SCENE = 0;
   int sceneID = sceneID_[DEFAULT_SCENE];
   auto& sceneGraph = sceneManager_.getSceneGraph(sceneID);
-  shadowLight_->setTarget({3, 2, 3}, rgbSensorNode_->transformation()[2].xyz(),
-                          *renderCamera_);
+  generateShadowMaps(sceneGraph);
 
-  shadowLight_->render(*sceneGraph.getDrawableGroup("shadow_casters"));
+  uint32_t visibles = 0;
 
-  uint32_t visibles =
-      renderCamera_->draw(sceneGraph.getDrawables(), frustumCullingEnabled_);
-
-  // for (auto& it : sceneGraph.getDrawableGroups()) {
-  //   // TODO: remove || true
-  //   if (it.second.prepareForDraw(*renderCamera_) || true) {
-  //     visibles += renderCamera_->draw(it.second, frustumCullingEnabled_);
-  //   }
-  // }
+  for (auto& it : sceneGraph.getDrawableGroups()) {
+    // TODO: remove || true
+    if (it.second.prepareForDraw(*renderCamera_) || true) {
+      visibles += renderCamera_->draw(it.second, frustumCullingEnabled_);
+    }
+  }
 
   if (debugBullet_) {
     Magnum::Matrix4 camM(renderCamera_->cameraMatrix());
