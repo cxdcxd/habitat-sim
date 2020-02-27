@@ -984,7 +984,7 @@ bool ResourceManager::loadGeneralMeshData(
 
   // Mesh & metaData container
   MeshMetaData metaData;
-  metaData.isSceneAsset = isScene;
+  metaData.isSceneAsset = false;
 
 #ifndef MAGNUM_BUILD_STATIC
   Magnum::PluginManager::Manager<Importer> manager;
@@ -1150,8 +1150,7 @@ bool ResourceManager::loadGeneralMeshData(
     }  // forceReload
 
     // TODO: make this configurable
-    Mn::ResourceKey lightSetup{metaData.isSceneAsset ? "scene_key"
-                                                     : DEFAULT_LIGHTING_KEY};
+    Mn::ResourceKey lightSetup{isScene ? "scene_key" : DEFAULT_LIGHTING_KEY};
     addComponent(metaData, newNode, lightSetup, drawables, metaData.root);
     return true;
   }
@@ -1477,9 +1476,8 @@ void ResourceManager::createGenericDrawable(
   node.addFeature<gfx::GenericDrawable>(mesh, shaderManager_, lightSetup,
                                         material, group, objectId,
                                         &scene->lightSetupToShadowMaps_);
-
   if (lightSetup != Mn::ResourceKey{"scene_key"}) {
-    auto shadowCasterDrawables = scene->getShadowCasterDrawables();
+    auto& shadowCasterDrawables = scene->getShadowCasterDrawables();
     node.addFeature<gfx::ShadowCasterDrawable>(mesh, shaderManager_,
                                                &shadowCasterDrawables);
   }

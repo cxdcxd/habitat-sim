@@ -32,10 +32,6 @@ GenericDrawable::GenericDrawable(
     lightSetupShadowMaps_ =
         shadowMapRegistry_->get<scene::SceneGraph::LightSetupShadowMaps>(
             lightSetup);
-    if (lightSetupShadowMaps_) {
-      Magnum::Debug{} << "using shadow map of size: "
-                      << lightSetupShadowMaps_->size();
-    }
   }
   // update the shader early here to to avoid doing it during the render loop
   updateShader();
@@ -51,6 +47,30 @@ void GenericDrawable::setLightSetup(const Magnum::ResourceKey& resourceKey) {
 void GenericDrawable::draw(const Magnum::Matrix4& transformationMatrix,
                            Magnum::SceneGraph::Camera3D& camera) {
   updateShader();
+
+  if (receivesShadow_ && lightSetupShadowMaps_) {
+    shadowReceiverShader_->setTransformationProjectionMatrix(
+        camera.projectionMatrix() * transformationMatrix);
+    shadowReceiverShader_->setModelMatrix(
+        object().absoluteTransformationMatrix());
+
+    ShadowLight* shadowLight = (*lightSetupShadowMaps_)[0];
+
+    Corrade::Containers::Array<Magnum::Matrix4> shadowMatrices{
+        Corrade::Containers::NoInit, shadowLight->layerCount()};
+    for (std::size_t layerIndex = 0; layerIndex != shadowLight->layerCount();
+         ++layerIndex) {
+      shadowMatrices[layerIndex] = shadowLight->layerMatrix(layerIndex);
+    }
+
+    (*shadowReceiverShader_)
+        .setShadowmapMatrices(shadowMatrices)
+        .setShadowmapTexture(shadowLight->shadowTexture())
+        .setLightDirection(shadowLight->node().transformation().backward());
+
+    mesh_.draw(*shadowReceiverShader_);
+    return;
+  }
 
   const Magnum::Matrix4 cameraMatrix = camera.cameraMatrix();
 
@@ -114,6 +134,27 @@ void GenericDrawable::updateShader() {
           shader_.key(), new Magnum::Shaders::Phong{flags, lightCount},
           Magnum::ResourceDataState::Final,
           Magnum::ResourcePolicy::ReferenceCounted);
+    }
+  }
+
+  if (receivesShadow_ && (!shadowReceiverShader_ ||
+                          shadowReceiverShader_->getNumLayers() !=
+                              (*lightSetupShadowMaps_)[0]->layerCount())) {
+    auto layerCount = (*lightSetupShadowMaps_)[0]->layerCount();
+    shadowReceiverShader_ =
+        shaderManager_
+            .get<Magnum::GL::AbstractShaderProgram, ShadowReceiverShader>(
+                Corrade::Utility::formatString("shadow-receiver-{}",
+                                               layerCount));
+
+    if (!shadowReceiverShader_) {
+      shaderManager_.set<Magnum::GL::AbstractShaderProgram>(
+          shadowReceiverShader_.key(),
+          new ShadowReceiverShader{
+              static_cast<Magnum::UnsignedInt>(layerCount)},
+          Magnum::ResourceDataState::Final,
+          Magnum::ResourcePolicy::ReferenceCounted);
+      shadowReceiverShader_->setShadowBias(0.001f);
     }
   }
 }

@@ -183,8 +183,8 @@ Viewer::Viewer(const Arguments& arguments)
 
   // init shadows
   shadowLight_ = sceneGraph_->createShadowLight();
-  shadowLight_->setupShadowmaps(4, shadowMapSize_);
-  shadowLight_->setupSplitDistances(0.001f, 1000.0f, 3.0f);
+  shadowLight_->setupShadowmaps(5, shadowMapSize_);
+  shadowLight_->setupSplitDistances(0.001f, 0.1f, 1.8f);
 
   sceneGraph_->lightSetupToShadowMaps_.set(
       assets::ResourceManager::DEFAULT_LIGHTING_KEY,
@@ -214,6 +214,8 @@ Viewer::Viewer(const Arguments& arguments)
 
   const Magnum::Range3D& sceneBB = rootNode_->computeCumulativeBB();
   resourceManager_.setLightSetup(assets::ResourceManager::DEFAULT_LIGHTING_KEY,
+                                 gfx::getLightsAtBoxCorners(sceneBB));
+  resourceManager_.setLightSetup("scene_key",
                                  gfx::getLightsAtBoxCorners(sceneBB));
 
   // Set up camera

@@ -8,6 +8,7 @@
 
 #include "esp/gfx/Drawable.h"
 #include "esp/gfx/ShaderManager.h"
+#include "esp/gfx/shadows/ShadowReceiverShader.h"
 
 namespace esp {
 namespace gfx {
@@ -59,6 +60,8 @@ class GenericDrawable : public Drawable {
   ShaderManager& shaderManager_;
   Magnum::Resource<Magnum::GL::AbstractShaderProgram, Magnum::Shaders::Phong>
       shader_;
+  Magnum::Resource<Magnum::GL::AbstractShaderProgram, ShadowReceiverShader>
+      shadowReceiverShader_;
   Magnum::Resource<MaterialData, PhongMaterialData> materialData_;
   Magnum::Resource<LightSetup> lightSetup_;
   Magnum::Resource<scene::SceneGraph::LightSetupShadowMaps>

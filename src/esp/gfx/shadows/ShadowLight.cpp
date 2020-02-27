@@ -28,15 +28,15 @@ namespace esp {
 namespace gfx {
 
 ShadowLight::ShadowLight(scene::SceneNode& parent)
-    : Mn::SceneGraph::Camera3D{parent}, _shadowTexture{Mn::NoCreate} {
+    : Mn::SceneGraph::Camera3D{parent}, shadowTexture_{Mn::NoCreate} {
   setAspectRatioPolicy(Mn::SceneGraph::AspectRatioPolicy::NotPreserved);
 }
 
 void ShadowLight::setupShadowmaps(Mn::Int numShadowLevels,
                                   const Mn::Vector2i& size) {
-  _layers.clear();
+  layers_.clear();
 
-  (_shadowTexture = Mn::GL::Texture2DArray{})
+  (shadowTexture_ = Mn::GL::Texture2DArray{})
       .setImage(0, Mn::GL::TextureFormat::DepthComponent,
                 Mn::ImageView3D{Mn::GL::PixelFormat::DepthComponent,
                                 Mn::GL::PixelType::Float,
@@ -49,11 +49,11 @@ void ShadowLight::setupShadowmaps(Mn::Int numShadowLevels,
       .setMagnificationFilter(Mn::GL::SamplerFilter::Linear);
 
   for (std::int_fast32_t i = 0; i < numShadowLevels; ++i) {
-    _layers.emplace_back(size);
-    Mn::GL::Framebuffer& shadowFramebuffer = _layers.back().shadowFramebuffer;
+    layers_.emplace_back(size);
+    Mn::GL::Framebuffer& shadowFramebuffer = layers_.back().shadowFramebuffer;
     shadowFramebuffer
         .attachTextureLayer(Mn::GL::Framebuffer::BufferAttachment::Depth,
-                            _shadowTexture, 0, i)
+                            shadowTexture_, 0, i)
         .mapForDraw(Mn::GL::Framebuffer::DrawAttachment::None)
         .bind();
     CORRADE_INTERNAL_ASSERT(
@@ -74,10 +74,10 @@ void ShadowLight::setTarget(const Mn::Vector3& lightDirection,
   const Mn::Matrix3x3 inverseCameraRotationMatrix =
       cameraRotationMatrix.inverted();
 
-  for (std::size_t layerIndex = 0; layerIndex != _layers.size(); ++layerIndex) {
+  for (std::size_t layerIndex = 0; layerIndex != layers_.size(); ++layerIndex) {
     std::vector<Mn::Vector3> mainCameraFrustumCorners =
         layerFrustumCorners(mainCamera, Mn::Int(layerIndex));
-    ShadowLayerData& layer = _layers[layerIndex];
+    ShadowLayerData& layer = layers_[layerIndex];
 
     /* Calculate the AABB in shadow-camera space */
     Mn::Vector3 min{std::numeric_limits<Mn::Float>::max()},
@@ -104,27 +104,27 @@ void ShadowLight::setTarget(const Mn::Vector3& lightDirection,
 }
 
 Mn::Float ShadowLight::cutZ(const Mn::Int layer) const {
-  return _layers[layer].cutPlane;
+  return layers_[layer].cutPlane;
 }
 
 void ShadowLight::setupSplitDistances(const Mn::Float zNear,
                                       const Mn::Float zFar,
                                       const Mn::Float power) {
   /* props http://stackoverflow.com/a/33465663 */
-  for (std::size_t i = 0; i != _layers.size(); ++i) {
+  for (std::size_t i = 0; i != layers_.size(); ++i) {
     const Mn::Float linearDepth =
         zNear +
-        std::pow(Mn::Float(i + 1) / _layers.size(), power) * (zFar - zNear);
+        std::pow(Mn::Float(i + 1) / layers_.size(), power) * (zFar - zNear);
     const Mn::Float nonLinearDepth =
         (zFar + zNear - 2.0f * zNear * zFar / linearDepth) / (zFar - zNear);
-    _layers[i].cutPlane = (nonLinearDepth + 1.0f) / 2.0f;
+    layers_[i].cutPlane = (nonLinearDepth + 1.0f) / 2.0f;
   }
 }
 
 Mn::Float ShadowLight::cutDistance(const Mn::Float zNear,
                                    const Mn::Float zFar,
                                    const Mn::Int layer) const {
-  const Mn::Float depthSample = 2.0f * _layers[layer].cutPlane - 1.0f;
+  const Mn::Float depthSample = 2.0f * layers_[layer].cutPlane - 1.0f;
   const Mn::Float zLinear =
       2.0f * zNear * zFar / (zFar + zNear - depthSample * (zFar - zNear));
   return zLinear;
@@ -133,8 +133,8 @@ Mn::Float ShadowLight::cutDistance(const Mn::Float zNear,
 std::vector<Mn::Vector3> ShadowLight::layerFrustumCorners(
     MagnumCamera& mainCamera,
     const Mn::Int layer) {
-  const Mn::Float z0 = layer == 0 ? 0 : _layers[layer - 1].cutPlane;
-  const Mn::Float z1 = _layers[layer].cutPlane;
+  const Mn::Float z0 = layer == 0 ? 0 : layers_[layer - 1].cutPlane;
+  const Mn::Float z1 = layers_[layer].cutPlane;
   return cameraFrustumCorners(mainCamera, z0, z1);
 }
 
@@ -156,143 +156,102 @@ std::vector<Mn::Vector3> ShadowLight::frustumCorners(const Mn::Matrix4& imvp,
           imvp.transformPoint({-1, 1, z1}),  imvp.transformPoint({1, 1, z1})};
 }
 
-std::vector<Mn::Vector4> ShadowLight::calculateClipPlanes() {
-  const Mn::Matrix4 pm = projectionMatrix();
-  std::vector<Mn::Vector4> clipPlanes{
-      {pm[3][0] + pm[2][0], pm[3][1] + pm[2][1], pm[3][2] + pm[2][2],
-       pm[3][3] + pm[2][3]}, /* near */
-      {pm[3][0] - pm[2][0], pm[3][1] - pm[2][1], pm[3][2] - pm[2][2],
-       pm[3][3] - pm[2][3]}, /* far */
-      {pm[3][0] + pm[0][0], pm[3][1] + pm[0][1], pm[3][2] + pm[0][2],
-       pm[3][3] + pm[0][3]}, /* left */
-      {pm[3][0] - pm[0][0], pm[3][1] - pm[0][1], pm[3][2] - pm[0][2],
-       pm[3][3] - pm[0][3]}, /* right */
-      {pm[3][0] + pm[1][0], pm[3][1] + pm[1][1], pm[3][2] + pm[1][2],
-       pm[3][3] + pm[1][3]}, /* bottom */
-      {pm[3][0] - pm[1][0], pm[3][1] - pm[1][1], pm[3][2] - pm[1][2],
-       pm[3][3] - pm[1][3]}}; /* top */
-  for (Mn::Vector4& plane : clipPlanes)
-    plane *= plane.xyz().lengthInverted();
-  return clipPlanes;
+bool ShadowLight::isCulledByPlanes(
+    const Mn::Range3D& bb,
+    const std::vector<Magnum::Vector4>& clipPlanes) const {
+  const Mn::Vector3 center = bb.center();
+  const Mn::Vector3 extent = bb.max() - bb.min();
+  return std::any_of(clipPlanes.begin(), clipPlanes.end(),
+                     [&center, &extent](const Magnum::Vector4& plane) {
+                       const Mn::Vector3 absPlaneNormal =
+                           Mn::Math::abs(plane.xyz());
+
+                       const float d = Mn::Math::dot(center, plane.xyz());
+                       const float r = Mn::Math::dot(extent, absPlaneNormal);
+                       return (d + r < -2.0 * plane.w());
+                     });
 }
 
-void ShadowLight::render(MagnumDrawableGroup& drawables) {
-  /* Compute transformations of all objects in the group relative to the camera
-   */
-  std::vector<std::reference_wrapper<MagnumObject>> objects;
-  objects.reserve(drawables.size());
-  for (std::size_t i = 0; i != drawables.size(); ++i)
-    objects.push_back(static_cast<MagnumObject&>(drawables[i].object()));
-  std::vector<ShadowCasterDrawable*> filteredDrawables;
+void ShadowLight::generateLayerShadowMap(ShadowLayerData& d,
+                                         MagnumDrawableGroup& drawables) {
+  Mn::Float orthographicNear = d.orthographicNear;
+  const Mn::Float orthographicFar = d.orthographicFar;
+
+  /* Move this whole object to the right place to render each layer */
+  object().setTransformation(d.shadowCameraMatrix).setClean();
+  setProjectionMatrix(Mn::Matrix4::orthographicProjection(
+      d.orthographicSize, orthographicNear, orthographicFar));
+
+  // const std::vector<Mn::Vector4> clipPlanes = calculateClipPlanes();
+  // camera frustum in camera coordinates
+  const Mn::Frustum frustum = Mn::Frustum::fromMatrix(projectionMatrix());
+  // Skip out the near plane because we need to include shadow casters
+  // traveling the direction the camera is facing.
+  const std::vector<Mn::Vector4> clipPlanes{frustum.left(), frustum.right(),
+                                            frustum.top(), frustum.bottom(),
+                                            frustum.far()};
+  std::vector<std::pair<std::reference_wrapper<Magnum::SceneGraph::Drawable3D>,
+                        Magnum::Matrix4>>
+      drawableTransforms = drawableTransformations(drawables);
+
+  /* Rebuild the list of objects we will draw by clipping them with the
+     shadow camera's planes */
+  std::size_t transformationsOutIndex = 0;
+  drawableTransforms.erase(
+      std::remove_if(drawableTransforms.begin(), drawableTransforms.end(),
+                     [&clipPlanes, &orthographicNear,
+                      this](const std::pair<
+                            std::reference_wrapper<Mn::SceneGraph::Drawable3D>,
+                            Mn::Matrix4>& drawableTransform) {
+                       auto& node = static_cast<scene::SceneNode&>(
+                           drawableTransform.first.get().object());
+
+                       // get this objects bounding box relative to camera
+                       Magnum::Range3D range = geo::getTransformedBB(
+                           node.getMeshBB(), drawableTransform.second);
+
+                       if (isCulledByPlanes(range, clipPlanes))
+                         return true;
+
+                       /* If this object extends in front of the near plane,
+                          extend the near plane. We negate the z because the
+                          negative z is forward away from the camera, but the
+                          near/far planes are measured forwards. */
+                       // TODO: need to implement proper distance
+                       const Mn::Float nearestPoint = -100.f;
+                       orthographicNear =
+                           Mn::Math::min(orthographicNear, nearestPoint);
+                       return false;
+                     }),
+      drawableTransforms.end());
+
+  /* Recalculate the projection matrix with new near plane. */
+  const Mn::Matrix4 shadowCameraProjectionMatrix =
+      Mn::Matrix4::orthographicProjection(d.orthographicSize, orthographicNear,
+                                          orthographicFar);
 
   /* Projecting world points normalized device coordinates means they range
-     -1 -> 1. Use this bias matrix so we go straight from world -> texture
-     space */
+  -1 -> 1. Use this bias matrix so we go straight from world -> texture
+  space */
   constexpr const Mn::Matrix4 bias{{0.5f, 0.0f, 0.0f, 0.0f},
                                    {0.0f, 0.5f, 0.0f, 0.0f},
                                    {0.0f, 0.0f, 0.5f, 0.0f},
                                    {0.5f, 0.5f, 0.5f, 1.0f}};
+  d.shadowMatrix = bias * shadowCameraProjectionMatrix * cameraMatrix();
+  setProjectionMatrix(shadowCameraProjectionMatrix);
 
+  d.shadowFramebuffer.clear(Mn::GL::FramebufferClear::Depth).bind();
+  draw(drawableTransforms);
+}
+
+void ShadowLight::generateShadowMaps(MagnumDrawableGroup& drawables) {
+  /* Compute transformations of all objects in the group relative to the
+   * camera
+   */
   Mn::GL::Renderer::setDepthMask(true);
 
-  for (std::size_t layer = 0; layer != _layers.size(); ++layer) {
-    ShadowLayerData& d = _layers[layer];
-    Mn::Float orthographicNear = d.orthographicNear;
-    const Mn::Float orthographicFar = d.orthographicFar;
-
-    /* Move this whole object to the right place to render each layer */
-    object().setTransformation(d.shadowCameraMatrix).setClean();
-    setProjectionMatrix(Mn::Matrix4::orthographicProjection(
-        d.orthographicSize, orthographicNear, orthographicFar));
-
-    // const std::vector<Mn::Vector4> clipPlanes = calculateClipPlanes();
-    // camera frustum relative to camera
-    const Mn::Frustum frustum = Mn::Frustum::fromMatrix(projectionMatrix());
-    // Skip out the near plane because we need to include shadow casters
-    // traveling the direction the camera is facing.
-    const std::vector<Mn::Vector4> clipPlanes{frustum.left(), frustum.right(),
-                                              frustum.top(), frustum.bottom(),
-                                              frustum.far()};
-    std::vector<Mn::Matrix4> transformations =
-        object().scene()->transformationMatrices(objects, cameraMatrix());
-
-    /* Rebuild the list of objects we will draw by clipping them with the
-       shadow camera's planes */
-    std::size_t transformationsOutIndex = 0;
-    filteredDrawables.clear();
-    for (std::size_t drawableIndex = 0; drawableIndex != drawables.size();
-         ++drawableIndex) {
-      bool drawnByLayer = true;
-      auto& drawable =
-          static_cast<ShadowCasterDrawable&>(drawables[drawableIndex]);
-      auto& node = static_cast<scene::SceneNode&>(objects[drawableIndex].get());
-      const Mn::Matrix4 transform = transformations[drawableIndex];
-
-      /* If your centre is offset, inject it here */
-      const Mn::Vector4 localCentre{0.0f, 0.0f, 0.0f, 1.0f};
-      const Mn::Vector4 drawableCentre = transform * localCentre;
-
-      // get this objects bounding box relative to camera
-      Magnum::Range3D range =
-          geo::getTransformedBB(node.getCumulativeBB(), cameraMatrix());
-
-      const Mn::Vector3 center = range.min() + range.max();
-      const Mn::Vector3 extent = range.max() - range.min();
-      for (const auto& plane : clipPlanes) {
-        const Mn::Vector3 absPlaneNormal = Mn::Math::abs(plane.xyz());
-
-        const float d = Mn::Math::dot(center, plane.xyz());
-        const float r = Mn::Math::dot(extent, absPlaneNormal);
-        if (d + r < -2.0 * plane.w()) {
-          // useless side of plane, we can skip
-          drawnByLayer = false;
-          break;
-        }
-      }
-
-      if (!drawnByLayer) {
-        continue;
-      }
-
-      {
-        /* If this object extends in front of the near plane, extend
-           the near plane. We negate the z because the negative z is
-           forward away from the camera, but the near/far planes are
-           measured forwards. */
-        // TODO: need to implement proper distance
-        const Mn::Float nearestPoint = 0;
-        orthographicNear = Mn::Math::min(orthographicNear, nearestPoint);
-        filteredDrawables.push_back(&drawable);
-        transformations[transformationsOutIndex++] = transform;
-      }
-
-      /* Start at 1, not 0 to skip out the near plane because we need to
-         include shadow casters traveling the direction the camera is
-         facing. */
-      //   for (std::size_t clipPlaneIndex = 1; clipPlaneIndex !=
-      //   clipPlanes.size();
-      //        ++clipPlaneIndex) {
-      //     const Mn::Float distance =
-      //         Mn::Math::dot(clipPlanes[clipPlaneIndex], drawableCentre);
-
-      //     /* If the object is on the useless side of any one plane, we can
-      //     skip it
-      //      */
-      //     if (distance < -drawable.radius())
-      //       goto next;
-      //   }
-    }
-
-    /* Recalculate the projection matrix with new near plane. */
-    const Mn::Matrix4 shadowCameraProjectionMatrix =
-        Mn::Matrix4::orthographicProjection(d.orthographicSize,
-                                            orthographicNear, orthographicFar);
-    d.shadowMatrix = bias * shadowCameraProjectionMatrix * cameraMatrix();
-    setProjectionMatrix(shadowCameraProjectionMatrix);
-
-    d.shadowFramebuffer.clear(Mn::GL::FramebufferClear::Depth).bind();
-    for (std::size_t i = 0; i != transformationsOutIndex; ++i)
-      filteredDrawables[i]->draw(transformations[i], *this);
+  for (auto& layer : layers_) {
+    generateLayerShadowMap(layer, drawables);
   }
 
   Mn::GL::defaultFramebuffer.bind();

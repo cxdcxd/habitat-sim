@@ -89,7 +89,7 @@ class ShadowLight : public MagnumCamera {
   /**
    * @brief Render a group of shadow-casting drawables to the shadow maps
    */
-  void render(MagnumDrawableGroup& drawables);
+  void generateShadowMaps(MagnumDrawableGroup& drawables);
 
   std::vector<Magnum::Vector3> layerFrustumCorners(MagnumCamera& mainCamera,
                                                    Magnum::Int layer);
@@ -100,19 +100,17 @@ class ShadowLight : public MagnumCamera {
                             Magnum::Float zFar,
                             Magnum::Int layer) const;
 
-  std::size_t layerCount() const { return _layers.size(); }
+  std::size_t layerCount() const { return layers_.size(); }
 
   const Magnum::Matrix4& layerMatrix(Magnum::Int layer) const {
-    return _layers[layer].shadowMatrix;
+    return layers_[layer].shadowMatrix;
   }
 
   std::vector<Magnum::Vector4> calculateClipPlanes();
 
-  Magnum::GL::Texture2DArray& shadowTexture() { return _shadowTexture; }
+  Magnum::GL::Texture2DArray& shadowTexture() { return shadowTexture_; }
 
  private:
-  Magnum::GL::Texture2DArray _shadowTexture;
-
   struct ShadowLayerData {
     Magnum::GL::Framebuffer shadowFramebuffer;
     Magnum::Matrix4 shadowCameraMatrix;
@@ -124,7 +122,15 @@ class ShadowLight : public MagnumCamera {
     explicit ShadowLayerData(const Magnum::Vector2i& size);
   };
 
-  std::vector<ShadowLayerData> _layers;
+  void generateLayerShadowMap(ShadowLayerData& d,
+                              MagnumDrawableGroup& drawables);
+
+  bool isCulledByPlanes(const Magnum::Range3D& bb,
+                        const std::vector<Magnum::Vector4>& clipPlanes) const;
+
+  Magnum::GL::Texture2DArray shadowTexture_;
+
+  std::vector<ShadowLayerData> layers_;
 
   ESP_SMART_POINTERS(ShadowLight);
 };
