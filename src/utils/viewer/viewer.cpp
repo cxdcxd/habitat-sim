@@ -122,7 +122,7 @@ class Viewer : public Magnum::Platform::Application {
 
   gfx::ShadowLight* shadowLight_ = nullptr;
   Vector2i shadowMapSize_{1024, 1024};
-  Float shadowBias = 0.003f;
+  Float sceneCornerToCorner_;
 };
 
 Viewer::Viewer(const Arguments& arguments)
@@ -183,8 +183,6 @@ Viewer::Viewer(const Arguments& arguments)
 
   // init shadows
   shadowLight_ = sceneGraph_->createShadowLight();
-  shadowLight_->setupShadowmaps(5, shadowMapSize_);
-  shadowLight_->setupSplitDistances(0.001f, 0.1f, 1.8f);
 
   sceneGraph_->lightSetupToShadowMaps_.set(
       assets::ResourceManager::DEFAULT_LIGHTING_KEY,
@@ -216,6 +214,12 @@ Viewer::Viewer(const Arguments& arguments)
   resourceManager_.setLightSetup(gfx::getLightsAtBoxCorners(sceneBB));
   resourceManager_.setLightSetup(gfx::getLightsAtBoxCorners(sceneBB),
                                  "scene_key");
+  sceneCornerToCorner_ = (sceneBB.max() - sceneBB.min()).length() / 5.0;
+  gfx::LightSetup singleLight{{{1.0, 1.0, 1.0}}};
+  resourceManager_.setLightSetup(singleLight, "scene_key");
+
+  shadowLight_->setupShadowmaps(5, shadowMapSize_);
+  shadowLight_->setupSplitDistances(0.001f, sceneCornerToCorner_, 1.8f);
 
   // Set up camera
   renderCamera_ = &sceneGraph_->getDefaultRenderCamera();
@@ -637,6 +641,20 @@ void Viewer::keyPressEvent(KeyEvent& event) {
       // Test key. Put what you want here...
       torqueLastObject();
       break;
+    case KeyEvent::Key::L: {
+      std::size_t numLayers = shadowLight_->layerCount() + 1;
+      if (numLayers <= 32) {
+        shadowLight_->setupShadowmaps(numLayers, shadowMapSize_);
+        shadowLight_->setupSplitDistances(0.001f, sceneCornerToCorner_, 1.8f);
+      }
+    } break;
+    case KeyEvent::Key::M: {
+      std::size_t numLayers = shadowLight_->layerCount() - 1;
+      if (numLayers >= 1) {
+        shadowLight_->setupShadowmaps(numLayers, shadowMapSize_);
+        shadowLight_->setupSplitDistances(0.001f, sceneCornerToCorner_, 1.8f);
+      }
+    } break;
     case KeyEvent::Key::I:
       Magnum::DebugTools::screenshot(GL::defaultFramebuffer,
                                      "test_image_save.png");

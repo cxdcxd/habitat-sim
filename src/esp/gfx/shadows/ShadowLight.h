@@ -132,7 +132,7 @@ class ShadowLight : public MagnumCamera {
 
   std::vector<ShadowLayerData> layers_;
 
-  ESP_SMART_POINTERS(ShadowLight);
+  ESP_SMART_POINTERS(ShadowLight)
 };
 
 }  // namespace gfx

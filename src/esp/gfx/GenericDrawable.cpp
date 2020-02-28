@@ -98,6 +98,7 @@ void GenericDrawable::draw(const Magnum::Matrix4& transformationMatrix,
         .setShadowmapMatrices(shadowMatrices)
         .setShadowmapTexture(shadowLight->shadowTexture())
         .setShadeFacesFacingAwayFromLight(shadeFacesFacingAwayFromLight_)
+        // .setShadows(shadowLight->getEnabled())
         .setShadowLightDirection(
             shadowLight->node().transformation().backward());
   }
@@ -136,7 +137,7 @@ void GenericDrawable::updateShader() {
           new PhongShadowReceiverShader{flags, lightCount, layerCount},
           Magnum::ResourceDataState::Final,
           Magnum::ResourcePolicy::ReferenceCounted);
-      shader_->setShadowBias(0.001f);
+      shader_->setShadowBias(0.0015f);
     }
   }
 }

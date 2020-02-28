@@ -1494,6 +1494,7 @@ void ResourceManager::createGenericDrawable(
 
   bool isScene = lightSetup == Mn::ResourceKey{"scene_key"};
 
+  // if is Scece, dont shade faces facing away from light
   node.addFeature<gfx::GenericDrawable>(
       mesh, shaderManager_, lightSetup, material, group, objectId,
       &scene->lightSetupToShadowMaps_, !isScene);

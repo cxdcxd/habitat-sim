@@ -168,7 +168,7 @@ void main() {
       normalize(absoluteTransformedNormal);
 
   /* You might want to source this from a texture or a vertex color */
-  vec3 albedo = vec3(0.5, 0.5, 0.5);
+  vec3 albedo = vec3(1.0, 1.0, 1.0);
 
 #ifdef NORMAL_TEXTURE
   mediump vec3 normalizedTransformedTangent = normalize(transformedTangent);
@@ -202,9 +202,10 @@ void main() {
     }
 
     /* Shadow calculation */
+    /* TODO: support multiple lights, use actual light direction here */
     /* Is the normal of this face pointing towards the light?
        if pointing away from the light anyway, we know it's in the shade, don't
-     bother shadow map lookup */
+        bother shadow map lookup */
     float visibility = 1.0;
     if (shadeFacesFacingAwayFromLight &&
         dot(normalize(absoluteTransformedNormal),
@@ -228,8 +229,28 @@ void main() {
           break;
         }
       }
+#ifdef DEBUG_SHADOWMAP_LEVELS
+      switch (shadowLevel) {
+        case 0:
+          albedo *= vec3(1, 0, 0);
+          break;
+        case 1:
+          albedo *= vec3(1, 1, 0);
+          break;
+        case 2:
+          albedo *= vec3(0, 1, 0);
+          break;
+        case 3:
+          albedo *= vec3(0, 1, 1);
+          break;
+        default:
+          albedo *= vec3(1, 0, 1);
+          break;
+      }
     }
-    colorFromLight.rgb = colorFromLight.rgb * (visibility);
+#endif
+
+    colorFromLight.rgb = colorFromLight.rgb * visibility * albedo;
     fragmentColor += colorFromLight;
   }
 #endif
