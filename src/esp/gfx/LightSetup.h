@@ -32,6 +32,9 @@ struct LightInfo {
   bool staticShadows = false;
 };
 
+bool operator==(const LightInfo& a, const LightInfo& b);
+bool operator!=(const LightInfo& a, const LightInfo& b);
+
 using LightSetup = std::vector<LightInfo>;
 
 /**
