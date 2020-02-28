@@ -1473,9 +1473,11 @@ void ResourceManager::createGenericDrawable(
   if (!scene)
     return;
 
-  node.addFeature<gfx::GenericDrawable>(mesh, shaderManager_, lightSetup,
-                                        material, group, objectId,
-                                        &scene->lightSetupToShadowMaps_);
+  bool isScene = lightSetup == Mn::ResourceKey{"scene_key"};
+
+  node.addFeature<gfx::GenericDrawable>(
+      mesh, shaderManager_, lightSetup, material, group, objectId,
+      &scene->lightSetupToShadowMaps_, !isScene);
   if (lightSetup != Mn::ResourceKey{"scene_key"}) {
     auto& shadowCasterDrawables = scene->getShadowCasterDrawables();
     node.addFeature<gfx::ShadowCasterDrawable>(mesh, shaderManager_,

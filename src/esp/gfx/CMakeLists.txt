@@ -32,6 +32,8 @@ set(gfx_SOURCES
   shadows/ShadowCasterShader.h
   shadows/ShadowReceiverShader.cpp
   shadows/ShadowReceiverShader.h
+  shadows/PhongShadowReceiverShader.cpp
+  shadows/PhongShadowReceiverShader.h
 )
 
 # If ptex support is enabled add relevant source files

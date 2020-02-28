@@ -374,7 +374,7 @@ void Viewer::generateShadowMaps(scene::SceneGraph& scene) {
   shadowLight_->setTarget({3, 2, 3}, rgbSensorNode_->transformation()[2].xyz(),
                           *renderCamera_);
 
-  shadowLight_->render(scene.getShadowCasterDrawables());
+  shadowLight_->generateShadowMaps(scene.getShadowCasterDrawables());
 }
 
 void Viewer::torqueLastObject() {

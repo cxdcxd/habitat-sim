@@ -54,7 +54,7 @@ void main() {
       }
     }
 
-#ifdef DEBUG_SHADOWMAP_LEVELS
+    // #ifdef DEBUG_SHADOWMAP_LEVELS
     switch (shadowLevel) {
       case 0:
         albedo *= vec3(1, 0, 0);
@@ -72,14 +72,14 @@ void main() {
         albedo *= vec3(1, 0, 1);
         break;
     }
-#else
-    if (!inRange) {
+    //#else
+    if (false && !inRange) {
       // If your shadow maps don't cover your entire view, you might want to
       // remove this
       albedo *=
           vec3(1, 0, 1);  // Something has gone wrong - didn't find a shadow map
     }
-#endif
+    //#endif
   }
 
   color.rgb = ((ambient + vec3(intensity * inverseShadow)) * albedo);
