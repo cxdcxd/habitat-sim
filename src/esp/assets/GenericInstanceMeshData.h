@@ -41,11 +41,10 @@ class GenericInstanceMeshData : public BaseMesh {
   virtual ~GenericInstanceMeshData(){};
 
   /**
-   * @brief loads a PLY file and splits it by objectIDs into multiple different
-   * mesh's
+   * @brief Splits a PLY file by objectIDs into different meshes
    *
-   * @param plyFile
-   * @return std::vector<GenericInstanceMeshData>
+   * @param plyFile PLY file to load and split
+   * @return Mesh data split by objectID
    */
   static Corrade::Containers::Optional<std::vector<GenericInstanceMeshData>>
   loadPlySplitByObjectId(const std::string& plyFile);
@@ -75,9 +74,9 @@ class GenericInstanceMeshData : public BaseMesh {
 
  protected:
   struct PerObjectIDData {
-    size_t meshDataIndex;
+    size_t meshSplitId;
     uint16_t objectId;
-    std::unordered_map<uint32_t, uint32_t> globalIndexToPerObjectIndex;
+    std::unordered_map<uint32_t, uint32_t> globalVertexIndexToLocalVertexIndex;
   };
 
   void updateCollisionMeshData();

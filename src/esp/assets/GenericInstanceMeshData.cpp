@@ -195,13 +195,13 @@ Cr::Containers::Optional<ParsedPlyData> parsePly(const std::string& plyFile) {
 
 Cr::Containers::Optional<std::vector<GenericInstanceMeshData>>
 GenericInstanceMeshData::loadPlySplitByObjectId(const std::string& plyFile) {
-  Cr::Containers::Optional<ParsedPlyData> parsedData = parsePly(plyFile);
-  if (!parsedData) {
+  Cr::Containers::Optional<ParsedPlyData> parseResult = parsePly(plyFile);
+  if (!parseResult) {
     return Cr::Containers::NullOpt;
   }
-  const ParsedPlyData& data = *parsedData;
+  const ParsedPlyData& data = *parseResult;
 
-  std::vector<GenericInstanceMeshData> meshesData;
+  std::vector<GenericInstanceMeshData> splitMeshData;
   std::unordered_map<uint16_t, PerObjectIDData> objectIdToObjectData;
   for (size_t i = 0; i < data.objectIds.size(); ++i) {
     const uint16_t objectId = data.objectIds[i];
@@ -209,16 +209,17 @@ GenericInstanceMeshData::loadPlySplitByObjectId(const std::string& plyFile) {
 
     if (objectIdToObjectData.find(objectId) == objectIdToObjectData.end()) {
       objectIdToObjectData.emplace(
-          objectId, PerObjectIDData{meshesData.size(), objectId});
-      meshesData.emplace_back(GenericInstanceMeshData{});
+          objectId, PerObjectIDData{splitMeshData.size(), objectId});
+      splitMeshData.emplace_back(GenericInstanceMeshData{});
     }
 
     PerObjectIDData& perObjectData = objectIdToObjectData[objectId];
-    GenericInstanceMeshData& meshData = meshesData[perObjectData.meshDataIndex];
+    GenericInstanceMeshData& meshData =
+        splitMeshData[perObjectData.meshSplitId];
 
     meshData.addIndexToMeshData(globalIndex, data, perObjectData);
   }
-  return meshesData;
+  return splitMeshData;
 }
 
 void GenericInstanceMeshData::addIndexToMeshData(
@@ -227,8 +228,8 @@ void GenericInstanceMeshData::addIndexToMeshData(
     PerObjectIDData& localData) {
   // if local object hasn't seen this global index before, update local vertex,
   // color, and objectId buffers
-  auto result = localData.globalIndexToPerObjectIndex.emplace(globalIndex,
-                                                              cpu_vbo_.size());
+  auto result = localData.globalVertexIndexToLocalVertexIndex.emplace(
+      globalIndex, cpu_vbo_.size());
   if (result.second) {
     cpu_vbo_.emplace_back(globalData.cpu_vbo[globalIndex]);
     cpu_cbo_.emplace_back(globalData.cpu_cbo[globalIndex]);

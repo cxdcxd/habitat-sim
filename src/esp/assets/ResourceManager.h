@@ -606,6 +606,12 @@ class ResourceManager {
   void computeGeneralMeshAbsoluteAABBs();
 
   /**
+   * @brief Compute the absolute AABBs for drawables in semantic mesh in world
+   * space
+   */
+  void computeInstanceMeshAbsoluteAABBs();
+
+  /**
    * @brief Compute absolute transformations of all drwables stored in
    * staticDrawableInfo_
    */
